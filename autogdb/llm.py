@@ -102,6 +102,7 @@ def create_llm(config: LLMConfig, *, callbacks=None):
             ) from exc
         return ChatTongyi(
             model_name=config.model,
+            dashscope_api_key=config.api_key,
             temperature=config.temperature,
             streaming=config.streaming,
             callbacks=callbacks,
@@ -117,6 +118,7 @@ def create_llm(config: LLMConfig, *, callbacks=None):
             ) from exc
         return ChatZhipuAI(
             model_name=config.model,
+            api_key=config.api_key,
             temperature=config.temperature,
             streaming=config.streaming,
             callbacks=callbacks,
