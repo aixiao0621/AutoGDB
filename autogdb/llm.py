@@ -30,9 +30,15 @@ class LLMConfig:
 
         resolved_provider = provider or os.getenv("LLM_PROVIDER") or "openai"
         resolved_model = model or os.getenv("LLM_MODEL") or "gpt-4-1106-preview"
+        provider_env_key = None
+        if resolved_provider in {"qwen", "tongyi"}:
+            provider_env_key = "DASHSCOPE_API_KEY"
+        elif resolved_provider in {"glm", "zhipu", "chatglm"}:
+            provider_env_key = "ZHIPUAI_API_KEY"
         resolved_api_key = (
             api_key
             or os.getenv("LLM_API_KEY")
+            or (os.getenv(provider_env_key) if provider_env_key else None)
             or os.getenv("OPENAI_API_KEY")
         )
         resolved_api_base = (
@@ -102,6 +108,7 @@ def create_llm(config: LLMConfig, *, callbacks=None):
             ) from exc
         return ChatTongyi(
             model_name=config.model,
+            dashscope_api_key=config.api_key,
             temperature=config.temperature,
             streaming=config.streaming,
             callbacks=callbacks,
@@ -117,6 +124,7 @@ def create_llm(config: LLMConfig, *, callbacks=None):
             ) from exc
         return ChatZhipuAI(
             model_name=config.model,
+            api_key=config.api_key,
             temperature=config.temperature,
             streaming=config.streaming,
             callbacks=callbacks,
