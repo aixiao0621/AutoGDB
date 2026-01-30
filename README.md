@@ -26,6 +26,26 @@ python3 -m pip install -r requirements.txt && chmod +x ./run.sh
 ```
 after installing requirements, you can run the server by `./run.sh`
 
+## LLM Provider Configuration
+
+AutoGDB now supports multiple LLM providers via environment variables.
+
+```shell
+# Required for all providers
+export LLM_PROVIDER=openai   # openai | gemini | qwen | glm
+export LLM_MODEL=gpt-4-1106-preview
+export LLM_API_KEY=your_api_key
+
+# Optional (OpenAI-compatible providers)
+export LLM_API_BASE=https://api.openai.com/v1
+```
+
+OpenAI-compatible legacy variables are still supported:
+```shell
+export OPENAI_API_KEY=your_api_key
+export OPENAI_API_BASE=https://api.openai.com/v1
+```
+
 
 # GDB Plugin
 
