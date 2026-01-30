@@ -7,7 +7,7 @@ from langchain.agents import Tool
 import httpx
 import asyncio
 from langchain.agents import initialize_agent
-from langchain.chat_models.openai import ChatOpenAI
+from .llm import LLMConfig, create_llm
 from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import SystemMessage
@@ -49,15 +49,16 @@ class AutoGDB:
 
 
 class PwnAgent:
-    
-    def __init__(self,api_key: str,api_base: str,autogdb: Tool) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        api_base: str,
+        autogdb: Tool,
+        llm_config: LLMConfig | None = None,
+    ) -> None:
         self.autogdb = autogdb
-        self.llm = ChatOpenAI(temperature=1,
-            model_name='gpt-4-1106-preview',
-            openai_api_base=api_base,
-            openai_api_key=api_key,
-            streaming=True,
-            )
+        self.llm_config = self._resolve_llm_config(api_key, api_base, llm_config)
+        self.llm = create_llm(self.llm_config)
         
         self.template = """\
             You are a serious CTF player who don't make reckless decision. You can use gdb\
@@ -86,24 +87,41 @@ class PwnAgent:
     def chat(self,input):
         return self.agent.run(self.template+input)
 
+    @staticmethod
+    def _resolve_llm_config(
+        api_key: str,
+        api_base: str,
+        llm_config: LLMConfig | None,
+    ) -> LLMConfig:
+        if llm_config is not None:
+            return llm_config
+        return LLMConfig.from_env(api_key=api_key, api_base=api_base)
+
     
 class ChatAgent:
 
-    def __init__(self, api_key: str, api_base: str, pwnagent: PwnAgent) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        api_base: str,
+        pwnagent: PwnAgent,
+        llm_config: LLMConfig | None = None,
+    ) -> None:
         from langchain.agents import Tool
         from langchain.memory import ConversationBufferMemory
         from langchain.agents import initialize_agent
         from .streaming import FinalStreamingStdOutCallbackHandler
 
         self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        self.llm = ChatOpenAI(
+        resolved_config = llm_config or LLMConfig.from_env(
+            api_key=api_key,
+            api_base=api_base,
             temperature=0.5,
-            model_name='gpt-4-1106-preview',
-            openai_api_key=api_key,
-            openai_api_base=api_base,
-            streaming=True,
-            callbacks=[FinalStreamingStdOutCallbackHandler()]
-            )
+        )
+        self.llm = create_llm(
+            resolved_config,
+            callbacks=[FinalStreamingStdOutCallbackHandler()],
+        )
         
         self.tool = Tool(
             name="GDB Agent",

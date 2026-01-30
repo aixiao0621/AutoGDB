@@ -1,4 +1,5 @@
 from autogdb import *
+from autogdb.llm import LLMConfig
 import json
 import os
 
@@ -35,26 +36,26 @@ def banner():
     print(author,end='')
     print('\n')
 
-def check_for_keys():
-    OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", default="https://api.openai.com/v1")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    lo.success("Loaded API key and base URL from environment.")
-    
-    if OPENAI_API_KEY == None:
-        lo.fail("API key and base URL not found.")
-        OPENAI_API_KEY = input("Please enter your OpenAI API key: ").strip()
-        OPENAI_API_BASE = input("Please enter the OpenAI API base URL: ").strip()
+def load_llm_config() -> LLMConfig:
+    config = LLMConfig.from_env()
+    lo.success("Loaded LLM config from environment.")
+
+    if config.api_key is None:
+        lo.fail("API key not found in environment.")
+        config.api_key = input("Please enter your LLM API key: ").strip()
+        if config.provider == "openai":
+            config.api_base = (
+                input("Please enter the OpenAI API base URL: ").strip()
+                or config.api_base
+            )
 
         with open('api_key.py', 'w') as file:
-            file.write(f'OPENAI_API_KEY = "{OPENAI_API_KEY}"\n')
-            file.write(f'OPENAI_API_BASE = "{OPENAI_API_BASE}"\n')
+            file.write(f'OPENAI_API_KEY = "{config.api_key}"\n')
+            file.write(f'OPENAI_API_BASE = "{config.api_base}"\n')
 
         lo.success("api_key.py file created with your API key and base URL.")
 
-        # Re-import after creating the file
-        from api_key import OPENAI_API_KEY, OPENAI_API_BASE
-
-    return OPENAI_API_KEY, OPENAI_API_BASE
+    return config
 
 def console_input(input_str: str) -> str:
     print(input_str, end='')
@@ -89,10 +90,20 @@ def get_server_info():
     return server_ip, server_port
 
 def setup():
-    USER_OPENAI_API_KEY, USER_OPENAI_API_BASE = check_for_keys()
+    llm_config = load_llm_config()
     ip, port = get_server_info()
-    pwnagent = PwnAgent(USER_OPENAI_API_KEY, USER_OPENAI_API_BASE, AutoGDB(server=ip, port=port).tool())
-    chatagent = ChatAgent(USER_OPENAI_API_KEY, USER_OPENAI_API_BASE, pwnagent)
+    pwnagent = PwnAgent(
+        llm_config.api_key,
+        llm_config.api_base,
+        AutoGDB(server=ip, port=port).tool(),
+        llm_config=llm_config,
+    )
+    chatagent = ChatAgent(
+        llm_config.api_key,
+        llm_config.api_base,
+        pwnagent,
+        llm_config=llm_config,
+    )
     return chatagent
 
 def cli():

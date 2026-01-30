@@ -9,18 +9,25 @@ This demo showcases how to use the "AutoGDB" package to connect ChatGPT with GDB
 
 # Import all necessary modules from the AutoGDB package.
 from autogdb import AutoGDB, PwnAgent
+from autogdb.llm import LLMConfig
 
 # Import API keys from a secure location.
 # Make sure to create an api_key.py file with your personal OPENAI_API_KEY and OPENAI_API_BASE variables.
 import os
-OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", default="https://api.openai.com/v1")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-if OPENAI_API_KEY == None:
-    try:
-        from api_key import OPENAI_API_BASE, OPENAI_API_KEY
-    except ImportError:
-        print("Please create an api_key.py file with your personal OPENAI_API_KEY and OPENAI_API_BASE variables or set the environment variables.")
-    exit(1)
+def load_llm_config() -> LLMConfig:
+    config = LLMConfig.from_env()
+    if config.api_key is None:
+        try:
+            from api_key import OPENAI_API_BASE, OPENAI_API_KEY
+        except ImportError:
+            print(
+                "Please create an api_key.py file with your personal OPENAI_API_KEY "
+                "and OPENAI_API_BASE variables or set the environment variables."
+            )
+            exit(1)
+        config.api_key = OPENAI_API_KEY
+        config.api_base = OPENAI_API_BASE
+    return config
 
 # Main execution point of the script.
 if __name__ == "__main__":
@@ -33,8 +40,14 @@ if __name__ == "__main__":
     # The PwnAgent uses the provided Tool class instance to interact with the GDB server.
     # It contains a pre-built zero-shot-ReAct Agent to assist with solving challenges logically.
     # If you don't have a specific API_BASE, use the default OpenAI API endpoint.
+    llm_config = load_llm_config()
     default_api_base = "https://api.openai.com/v1"
-    pwnagent = PwnAgent(OPENAI_API_KEY, OPENAI_API_BASE or default_api_base, autogdb_connection)
+    pwnagent = PwnAgent(
+        llm_config.api_key,
+        llm_config.api_base or default_api_base,
+        autogdb_connection,
+        llm_config=llm_config,
+    )
 
     # Step 3: Start interacting with the PwnAgent
     # Now, you can give commands to the PwnAgent to perform debugging tasks!!!!
